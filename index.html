@@ -816,11 +816,12 @@ function init() {
 
   auth.onAuthStateChanged(async user => {
     const loginScreen = document.getElementById('login-screen');
-    if (user) {
+    if (user && !user.isAnonymous) {
       loginScreen.style.display = 'none';
       entries = await dbGetAll();
       renderEntries(); renderTimeline(); renderSideCal(); renderCalendar();
     } else {
+      if (user && user.isAnonymous) await auth.signOut();
       loginScreen.style.display = 'flex';
     }
   });
