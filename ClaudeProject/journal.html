@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Journal</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sidebar:  #1a2012;
+  --sidebar2: #253018;
+  --text:     #1c1c1e;
+  --sub:      #6b6b6e;
+  --line:     #e0dbd2;
+  --gold:     #c9a96e;
+  --gold2:    #f0e4c8;
+  --surface:  rgba(255,255,255,0.82);
+  --surface2: rgba(255,255,255,0.65);
+  --red:      #e05252;
+  --green:    #52b788;
+  --blue:     #4a90d9;
+  --radius:   14px;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── Animated Nature Background ── */
+body {
+  font-family: var(--font-sans);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+#nature-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  transition: background 3s ease;
+}
+
+/* Floating particles (leaves / petals) */
+.particle {
+  position: absolute;
+  pointer-events: none;
+  animation: drift linear infinite;
+  opacity: 0;
+}
+
+@keyframes drift {
+  0%   { transform: translateY(-40px) rotate(0deg);   opacity: 0; }
+  10%  { opacity: 0.7; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+
+/* Subtle shimmer overlay */
+#shimmer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(ellipse at 60% 0%, rgba(255,255,255,0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ── Layout ── */
+#sidebar {
+  position: relative;
+  z-index: 10;
+  width: 240px;
+  min-width: 240px;
+  background: rgba(22,30,14,0.92);
+  backdrop-filter: blur(16px);
+  color: #e5e1da;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+#sidebar-header {
+  padding: 28px 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+#sidebar-header h1 {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}
+#sidebar-header p {
+  font-size: 11px;
+  color: #6a7c55;
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#new-entry-btn {
+  margin: 14px 16px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #7aaa5a, #4e8a36);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: opacity 0.2s;
+}
+#new-entry-btn:hover { opacity: 0.85; }
+
+#timeline {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0 16px;
+  scrollbar-width: thin;
+  scrollbar-color: #3a4a28 transparent;
+}
+
+.year-label {
+  padding: 8px 20px 4px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #556644;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.year-label:hover { color: #99bb77; }
+.year-label .caret { font-size: 8px; transition: transform 0.2s; }
+.year-label.open .caret { transform: rotate(90deg); }
+
+.month-group { display: none; }
+.month-group.open { display: block; }
+
+.month-label {
+  padding: 6px 20px 4px 28px;
+  font-size: 11px;
+  color: #7a9960;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.05em;
+}
+.month-label:hover { color: #bbd9a0; }
+.month-label .caret { font-size: 8px; transition: transform 0.2s; }
+.month-label.open .caret { transform: rotate(90deg); }
+
+.day-entries { display: none; }
+.day-entries.open { display: block; }
+
+.day-entry-item {
+  padding: 6px 20px 6px 36px;
+  font-size: 12px;
+  color: #8a9e78;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+.day-entry-item:hover { color: #cce0aa; background: rgba(255,255,255,0.04); }
+.day-entry-item.active { color: var(--gold); border-left-color: var(--gold); }
+.day-entry-item .etitle { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-entry-item .emeta  { font-size: 10px; color: #4a5e38; margin-top: 1px; }
+
+/* ── Main ── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+#top-bar {
+  padding: 18px 32px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(20px);
+}
+
+#top-date {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: #3a4a2a;
+}
+
+#season-icon { font-size: 20px; margin-right: 10px; }
+
+#search-wrap { position: relative; }
+#search {
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 20px;
+  padding: 7px 16px 7px 32px;
+  font-size: 13px;
+  color: var(--text);
+  width: 200px;
+  outline: none;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s, background 0.2s;
+}
+#search:focus { border-color: var(--gold); background: rgba(255,255,255,0.9); }
+#search-icon {
+  position: absolute; left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--sub); font-size: 13px; pointer-events: none;
+}
+
+/* ── Editor Panel ── */
+#editor-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ── Daily Quote Banner ── */
+#daily-quote-banner {
+  border-radius: var(--radius);
+  padding: 20px 28px;
+  background: rgba(255,255,255,0.45);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.6);
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+#dq-leaf { font-size: 28px; flex-shrink: 0; line-height: 1; margin-top: 2px; }
+
+#dq-text {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-style: italic;
+  color: #3a4a2a;
+  line-height: 1.7;
+  flex: 1;
+}
+
+#dq-author {
+  font-size: 12px;
+  color: #7a9960;
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Editor Card ── */
+#editor-card {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: 0 4px 28px rgba(0,0,0,0.08);
+}
+
+#editor-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+#editor-datestamp {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--sub);
+  letter-spacing: 0.03em;
+}
+#editor-timestamp { font-size: 12px; color: #aaa; }
+
+/* Mood */
+#mood-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+#mood-label {
+  font-size: 11px;
+  color: var(--sub);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 4px;
+}
+.mood-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: rgba(255,255,255,0.5);
+  font-size: 19px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; line-height: 1;
+}
+.mood-btn:hover { transform: scale(1.18); background: rgba(255,255,255,0.85); }
+.mood-btn.selected { border-color: var(--gold); background: var(--gold2); }
+
+/* Title & Body */
+#entry-title {
+  width: 100%; border: none; outline: none; background: transparent;
+  font-family: var(--font-serif); font-size: 26px; font-weight: 400;
+  color: var(--text); margin-bottom: 14px; letter-spacing: -0.01em;
+}
+#entry-title::placeholder { color: #c8c4bc; }
+
+#entry-body {
+  width: 100%; border: none; outline: none; background: transparent;
+  font-family: var(--font-sans); font-size: 15px; color: var(--text);
+  line-height: 1.8; resize: none; min-height: 140px;
+}
+#entry-body::placeholder { color: #c8c4bc; }
+
+.editor-divider { border: none; border-top: 1px solid var(--line); margin: 16px 0; }
+
+/* Quote */
+#quote-section { display: none; }
+#quote-section.visible { display: block; }
+#quote-input {
+  width: 100%; border: none; outline: none; background: transparent;
+  font-family: var(--font-serif); font-size: 17px; font-style: italic;
+  color: var(--sub); line-height: 1.7; resize: none;
+  padding-left: 18px; border-left: 3px solid var(--gold); min-height: 60px;
+}
+#quote-input::placeholder { color: #ccc; }
+
+/* Links */
+#links-section { display: none; }
+#links-section.visible { display: block; }
+#links-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.link-item {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(122,170,90,0.1);
+  border-radius: 8px; padding: 8px 12px; font-size: 13px;
+}
+.link-item a { color: var(--blue); text-decoration: none; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-item a:hover { text-decoration: underline; }
+.link-item .remove-link { color: #ccc; cursor: pointer; font-size: 16px; flex-shrink: 0; }
+.link-item .remove-link:hover { color: var(--red); }
+#link-input-row { display: flex; gap: 8px; }
+#link-url, #link-label {
+  flex: 1; border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; background: rgba(255,255,255,0.7);
+  color: var(--text); outline: none; transition: border-color 0.2s;
+}
+#link-url:focus, #link-label:focus { border-color: var(--gold); }
+#link-url { flex: 2; }
+#add-link-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg,#7aaa5a,#4e8a36);
+  color: #fff; border: none; border-radius: 8px;
+  font-size: 13px; cursor: pointer; transition: opacity 0.2s;
+}
+#add-link-btn:hover { opacity: 0.85; }
+
+/* Images */
+#images-section { display: none; }
+#images-section.visible { display: block; }
+#images-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px; margin-bottom: 12px;
+}
+.img-item {
+  position: relative; border-radius: 10px; overflow: hidden;
+  aspect-ratio: 1; background: rgba(0,0,0,0.05);
+}
+.img-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-item .remove-img {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px;
+  background: rgba(0,0,0,0.55); color: #fff; border: none;
+  border-radius: 50%; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.15s;
+}
+.img-item:hover .remove-img { opacity: 1; }
+#img-input-row { display: flex; gap: 8px; align-items: center; }
+#img-url {
+  flex: 1; border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; background: rgba(255,255,255,0.7);
+  color: var(--text); outline: none; transition: border-color 0.2s;
+}
+#img-url:focus { border-color: var(--gold); }
+#img-file { display: none; }
+#img-file-btn, #add-img-btn {
+  padding: 8px 14px; border: none; border-radius: 8px;
+  font-size: 13px; cursor: pointer; transition: opacity 0.2s;
+}
+#add-img-btn { background: linear-gradient(135deg,#7aaa5a,#4e8a36); color: #fff; }
+#add-img-btn:hover { opacity: 0.85; }
+#img-file-btn { background: rgba(255,255,255,0.6); color: var(--sub); border: 1px solid var(--line); }
+#img-file-btn:hover { background: rgba(255,255,255,0.9); }
+
+/* Toolbar */
+#editor-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  padding-top: 16px; border-top: 1px solid var(--line); flex-wrap: wrap;
+}
+.tool-btn {
+  padding: 7px 14px;
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.5);
+  color: var(--sub); font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  transition: all 0.15s; letter-spacing: 0.03em;
+  backdrop-filter: blur(4px);
+}
+.tool-btn:hover { background: rgba(255,255,255,0.85); color: var(--text); }
+.tool-btn.active { background: var(--gold2); color: #6b4c1a; border-color: var(--gold); }
+
+#save-btn {
+  margin-left: auto;
+  padding: 9px 24px;
+  background: linear-gradient(135deg, #5a8a3a, #3a6020);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s; letter-spacing: 0.04em;
+  box-shadow: 0 2px 10px rgba(58,96,32,0.3);
+}
+#save-btn:hover { opacity: 0.88; }
+#save-feedback {
+  font-size: 12px; color: var(--green);
+  opacity: 0; transition: opacity 0.3s; margin-left: 8px;
+}
+#save-feedback.show { opacity: 1; }
+
+/* ── Past Entries ── */
+#entries-header {
+  font-size: 11px; color: #7a8c6a;
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px;
+}
+#entries-list { display: flex; flex-direction: column; gap: 14px; }
+
+.entry-card {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border-radius: var(--radius);
+  padding: 22px 26px;
+  border: 1px solid rgba(255,255,255,0.7);
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+  position: relative;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+.entry-card:hover {
+  box-shadow: 0 8px 28px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+.entry-card-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; margin-bottom: 10px; gap: 12px;
+}
+.entry-card-title {
+  font-family: var(--font-serif); font-size: 18px;
+  font-weight: 400; color: var(--text); line-height: 1.3;
+}
+.entry-card-meta {
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: 3px; flex-shrink: 0;
+}
+.entry-card-date { font-size: 11px; color: var(--sub); }
+.entry-card-time { font-size: 11px; color: #bbb; }
+.entry-card-mood { font-size: 20px; line-height: 1; margin-bottom: 3px; }
+.entry-card-body {
+  font-size: 14px; color: var(--sub); line-height: 1.65;
+  display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.entry-card-quote {
+  margin-top: 10px; padding-left: 14px;
+  border-left: 2px solid var(--gold2);
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 13px; color: var(--sub); line-height: 1.6;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.entry-card-attachments {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px; flex-wrap: wrap;
+}
+.attachment-pill {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(122,170,90,0.12);
+  border-radius: 20px; padding: 3px 10px;
+  font-size: 11px; color: #7a9960;
+}
+.entry-card-thumbs { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; }
+.entry-card-delete {
+  position: absolute; top: 14px; right: 14px;
+  background: none; border: none; color: #ccc;
+  cursor: pointer; font-size: 16px; padding: 4px;
+  border-radius: 6px; opacity: 0; transition: opacity 0.15s, color 0.15s;
+}
+.entry-card:hover .entry-card-delete { opacity: 1; }
+.entry-card-delete:hover { color: var(--red); background: rgba(224,82,82,0.08); }
+
+/* ── Empty State ── */
+#empty-state {
+  text-align: center; padding: 60px 20px; color: #aaa;
+}
+#empty-state .big { font-size: 52px; margin-bottom: 16px; }
+#empty-state p { font-size: 15px; line-height: 1.6; }
+
+/* ── Modal ── */
+#modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4); z-index: 200;
+  align-items: center; justify-content: center; padding: 24px;
+  backdrop-filter: blur(4px);
+}
+#modal-overlay.open { display: flex; }
+#modal {
+  background: rgba(255,255,255,0.94);
+  backdrop-filter: blur(20px);
+  border-radius: 18px;
+  max-width: 680px; width: 100%; max-height: 88vh;
+  overflow-y: auto; padding: 36px 40px; position: relative;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+}
+#modal-close {
+  position: absolute; top: 16px; right: 16px;
+  background: rgba(0,0,0,0.06); border: none; border-radius: 50%;
+  width: 32px; height: 32px; font-size: 18px; cursor: pointer;
+  color: var(--sub); display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+#modal-close:hover { background: rgba(0,0,0,0.12); }
+#modal-mood { font-size: 38px; margin-bottom: 10px; }
+#modal-title { font-family: var(--font-serif); font-size: 28px; font-weight: 400; margin-bottom: 6px; line-height: 1.3; }
+#modal-meta { font-size: 12px; color: var(--sub); margin-bottom: 24px; }
+#modal-body { font-size: 15px; line-height: 1.85; color: var(--text); white-space: pre-wrap; margin-bottom: 20px; }
+#modal-quote-wrap {
+  padding: 14px 20px; border-left: 3px solid var(--gold);
+  background: rgba(201,169,110,0.08); border-radius: 0 8px 8px 0; margin-bottom: 20px;
+}
+#modal-quote { font-family: var(--font-serif); font-style: italic; font-size: 17px; color: var(--sub); line-height: 1.7; }
+#modal-links { margin-bottom: 20px; }
+#modal-links h4, #modal-images h4 {
+  font-size: 11px; color: var(--sub);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+}
+.modal-link { display: block; color: var(--blue); font-size: 14px; text-decoration: none; margin-bottom: 4px; }
+.modal-link:hover { text-decoration: underline; }
+#modal-images { margin-bottom: 20px; }
+#modal-images-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px;
+}
+#modal-images-grid img {
+  width: 100%; border-radius: 10px; object-fit: cover; aspect-ratio: 1; cursor: pointer;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 10px; }
+
+@media (max-width: 700px) { #sidebar { display: none; } }
+</style>
+</head>
+<body>
+
+<div id="nature-bg"></div>
+<div id="shimmer"></div>
+
+<!-- PARTICLES -->
+<div id="particles"></div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div id="sidebar-header">
+    <h1>Journal</h1>
+    <p id="sidebar-scene-label">Your private space</p>
+  </div>
+  <button id="new-entry-btn" onclick="newEntry()">+ New Entry</button>
+  <div id="timeline"></div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="top-bar">
+    <div id="top-date-row" style="display:flex;align-items:center;">
+      <span id="season-icon"></span>
+      <span id="top-date"></span>
+    </div>
+    <div id="search-wrap">
+      <span id="search-icon">🔍</span>
+      <input id="search" type="text" placeholder="Search entries…" oninput="renderEntries()" />
+    </div>
+  </div>
+
+  <div id="editor-panel">
+
+    <!-- Daily Quote Banner -->
+    <div id="daily-quote-banner">
+      <div id="dq-leaf"></div>
+      <div>
+        <div id="dq-text"></div>
+        <div id="dq-author"></div>
+      </div>
+    </div>
+
+    <!-- Editor Card -->
+    <div id="editor-card">
+      <div id="editor-date-row">
+        <div id="editor-datestamp"></div>
+        <div id="editor-timestamp"></div>
+      </div>
+
+      <div id="mood-row">
+        <span id="mood-label">Mood</span>
+        <button class="mood-btn" data-mood="😊" title="Happy"      onclick="selectMood(this)">😊</button>
+        <button class="mood-btn" data-mood="😌" title="Calm"       onclick="selectMood(this)">😌</button>
+        <button class="mood-btn" data-mood="😔" title="Sad"        onclick="selectMood(this)">😔</button>
+        <button class="mood-btn" data-mood="😤" title="Frustrated" onclick="selectMood(this)">😤</button>
+        <button class="mood-btn" data-mood="🥳" title="Excited"    onclick="selectMood(this)">🥳</button>
+        <button class="mood-btn" data-mood="😴" title="Tired"      onclick="selectMood(this)">😴</button>
+        <button class="mood-btn" data-mood="🤔" title="Thoughtful" onclick="selectMood(this)">🤔</button>
+        <button class="mood-btn" data-mood="❤️" title="Grateful"   onclick="selectMood(this)">❤️</button>
+        <button class="mood-btn" data-mood="🌱" title="Growing"    onclick="selectMood(this)">🌱</button>
+      </div>
+
+      <input id="entry-title" type="text" placeholder="Give this entry a title…" />
+      <textarea id="entry-body" placeholder="What's on your mind today?" oninput="autoResize(this)"></textarea>
+
+      <div id="quote-section">
+        <hr class="editor-divider" />
+        <textarea id="quote-input" placeholder="Add a quote that speaks to you…" oninput="autoResize(this)"></textarea>
+      </div>
+
+      <div id="links-section">
+        <hr class="editor-divider" />
+        <div id="links-list"></div>
+        <div id="link-input-row">
+          <input id="link-url"   type="url"  placeholder="https://…" />
+          <input id="link-label" type="text" placeholder="Label (optional)" />
+          <button id="add-link-btn" onclick="addLink()">Add</button>
+        </div>
+      </div>
+
+      <div id="images-section">
+        <hr class="editor-divider" />
+        <div id="images-grid"></div>
+        <div id="img-input-row">
+          <input id="img-url" type="url" placeholder="Paste image URL…" />
+          <button id="add-img-btn" onclick="addImageFromUrl()">Add URL</button>
+          <button id="img-file-btn" onclick="document.getElementById('img-file').click()">Upload</button>
+          <input id="img-file" type="file" accept="image/*" multiple onchange="handleFileUpload(this)" />
+        </div>
+      </div>
+
+      <div id="editor-toolbar">
+        <button class="tool-btn" id="btn-quote"  onclick="toggleSection('quote-section','btn-quote')">❝ Quote</button>
+        <button class="tool-btn" id="btn-links"  onclick="toggleSection('links-section','btn-links')">🔗 Links</button>
+        <button class="tool-btn" id="btn-images" onclick="toggleSection('images-section','btn-images')">🖼 Images</button>
+        <button id="save-btn" onclick="saveEntry()">Save Entry</button>
+        <span id="save-feedback">✓ Saved</span>
+      </div>
+    </div>
+
+    <!-- Past Entries -->
+    <div id="entries-section">
+      <div id="entries-header">Your Entries</div>
+      <div id="entries-list"></div>
+      <div id="empty-state" style="display:none;">
+        <div class="big">🌿</div>
+        <p>Your journal is empty.<br>Begin with a single thought.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal">
+    <button id="modal-close" onclick="closeModalDirect()">✕</button>
+    <div id="modal-mood"></div>
+    <div id="modal-title"></div>
+    <div id="modal-meta"></div>
+    <div id="modal-body"></div>
+    <div id="modal-quote-wrap" style="display:none;"><div id="modal-quote"></div></div>
+    <div id="modal-links"  style="display:none;"><h4>Links</h4><div id="modal-links-list"></div></div>
+    <div id="modal-images" style="display:none;"><h4>Images</h4><div id="modal-images-grid"></div></div>
+  </div>
+</div>
+
+<script>
+// ── Daily Quotes ──
+const QUOTES = [
+  { text: "The earth has music for those who listen.", author: "William Shakespeare" },
+  { text: "In every walk with nature, one receives far more than he seeks.", author: "John Muir" },
+  { text: "Look deep into nature, and then you will understand everything better.", author: "Albert Einstein" },
+  { text: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
+  { text: "The clearest way into the Universe is through a forest wilderness.", author: "John Muir" },
+  { text: "Life is not measured by the breaths we take, but by the moments that take our breath away.", author: "Maya Angelou" },
+  { text: "Adopt the pace of nature: her secret is patience.", author: "Ralph Waldo Emerson" },
+  { text: "The sun is a daily reminder that we too can rise again from the darkness.", author: "S. Ajna" },
+  { text: "Every morning is a chance at a new day.", author: "Marjorie Pay Hinckley" },
+  { text: "Trees are poems that the earth writes upon the sky.", author: "Kahlil Gibran" },
+  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { text: "Let your life lightly dance on the edges of time like dew on the tip of a leaf.", author: "Rabindranath Tagore" },
+  { text: "Even the darkest night will end and the sun will rise.", author: "Victor Hugo" },
+  { text: "She is both hellfire and holy water, and the flavor you taste depends on how you treated her.", author: "Sneha Pal" },
+  { text: "Like wildflowers, you must allow yourself to grow in all the places people never thought you would.", author: "E.V." },
+  { text: "Be like a tree and let the dead leaves drop.", author: "Rumi" },
+  { text: "The mountains are calling and I must go.", author: "John Muir" },
+  { text: "Keep your face always toward the sunshine, and shadows will fall behind you.", author: "Walt Whitman" },
+  { text: "What you do today can improve all your tomorrows.", author: "Ralph Marston" },
+  { text: "Wherever you go, go with all your heart.", author: "Confucius" },
+  { text: "Rivers know this: there is no hurry. We shall get there some day.", author: "A.A. Milne" },
+  { text: "Everything you've ever wanted is on the other side of fear.", author: "George Addair" },
+  { text: "Breathe. Let go. And remind yourself that this very moment is the only one you know you have for sure.", author: "Oprah Winfrey" },
+  { text: "One touch of nature makes the whole world kin.", author: "William Shakespeare" },
+  { text: "The forest would be silent if no bird sang except the one that sang best.", author: "Henry Van Dyke" },
+  { text: "A small rock holds back a great wave.", author: "Homer" },
+  { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+  { text: "Start where you are. Use what you have. Do what you can.", author: "Arthur Ashe" },
+  { text: "You are braver than you believe, stronger than you seem, and smarter than you think.", author: "A.A. Milne" },
+  { text: "Go confidently in the direction of your dreams.", author: "Henry David Thoreau" },
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+  { text: "Nature does not hurry, yet everything is accomplished.", author: "Lao Tzu" },
+  { text: "Be yourself; everyone else is already taken.", author: "Oscar Wilde" },
+  { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
+  { text: "What we plant in the soil of contemplation, we shall reap in the harvest of action.", author: "Meister Eckhart" },
+  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+  { text: "A river cuts through rock not because of its power but because of its persistence.", author: "James Watkins" },
+];
+
+function getDailyQuote() {
+  const d = new Date();
+  const dayOfYear = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return QUOTES[dayOfYear % QUOTES.length];
+}
+
+// ── Nature Scenes (time-of-day) ──
+const SCENES = {
+  dawn: {
+    label: "Dawn",
+    icon: "🌅",
+    leaf: "🌸",
+    bg: "linear-gradient(160deg, #ff9a56 0%, #ffcc80 30%, #ffe0b2 55%, #b3e5fc 100%)",
+    particle: ["🌸","🍃","✨","🌷"],
+    sidebar: "#2a1a0e"
+  },
+  morning: {
+    label: "Morning",
+    icon: "🌤",
+    leaf: "🌿",
+    bg: "linear-gradient(160deg, #a8d8a8 0%, #c8e6c9 30%, #e8f5e9 55%, #fff9e6 100%)",
+    particle: ["🍃","🌿","🌾","✨"],
+    sidebar: "#1a2810"
+  },
+  afternoon: {
+    label: "Afternoon",
+    icon: "☀️",
+    leaf: "🌻",
+    bg: "linear-gradient(160deg, #81c784 0%, #a5d6a7 25%, #c8e6c9 50%, #f1f8e9 100%)",
+    particle: ["🦋","🌻","🍃","🌼"],
+    sidebar: "#1a2810"
+  },
+  golden: {
+    label: "Golden Hour",
+    icon: "🌇",
+    leaf: "🍂",
+    bg: "linear-gradient(160deg, #f4a030 0%, #f0c060 25%, #ffe082 50%, #fff8e1 85%, #fce4ec 100%)",
+    particle: ["🍂","🍁","🌾","✨"],
+    sidebar: "#2a1a08"
+  },
+  dusk: {
+    label: "Dusk",
+    icon: "🌆",
+    leaf: "🌙",
+    bg: "linear-gradient(160deg, #5c3d8f 0%, #7b5ca5 25%, #b39ddb 50%, #f3e5f5 85%, #fce4ec 100%)",
+    particle: ["🌙","⭐","🍂","✨"],
+    sidebar: "#1a1028"
+  },
+  night: {
+    label: "Night",
+    icon: "🌌",
+    leaf: "⭐",
+    bg: "linear-gradient(160deg, #0d1b2a 0%, #1a2744 30%, #243050 55%, #1e3a5f 80%, #2a1a3a 100%)",
+    particle: ["⭐","🌙","✨","💫"],
+    sidebar: "#0d1520"
+  }
+};
+
+function getScene() {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 8)  return SCENES.dawn;
+  if (h >= 8  && h < 12) return SCENES.morning;
+  if (h >= 12 && h < 17) return SCENES.afternoon;
+  if (h >= 17 && h < 19) return SCENES.golden;
+  if (h >= 19 && h < 21) return SCENES.dusk;
+  return SCENES.night;
+}
+
+function applyScene(scene) {
+  document.getElementById('nature-bg').style.background = scene.bg;
+  document.getElementById('season-icon').textContent = scene.icon + ' ';
+  document.getElementById('dq-leaf').textContent = scene.leaf;
+  document.getElementById('sidebar-scene-label').textContent = scene.label;
+  document.getElementById('sidebar').style.background =
+    `color-mix(in srgb, ${scene.sidebar} 90%, transparent)`;
+}
+
+// ── Particles ──
+function spawnParticles(scene) {
+  const container = document.getElementById('particles');
+  container.innerHTML = '';
+  const emojis = scene.particle;
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      font-size: ${10 + Math.random() * 18}px;
+      animation-duration: ${12 + Math.random() * 20}s;
+      animation-delay: ${-Math.random() * 20}s;
+      position: fixed;
+      z-index: 2;
+      pointer-events: none;
+    `;
+    container.appendChild(p);
+  }
+}
+
+// ── State ──
+let entries = JSON.parse(localStorage.getItem('journal_entries') || '[]');
+let currentLinks  = [];
+let currentImages = [];
+let selectedMood  = '';
+let editingId     = null;
+
+// ── Init ──
+function init() {
+  const scene = getScene();
+  applyScene(scene);
+  spawnParticles(scene);
+
+  const q = getDailyQuote();
+  document.getElementById('dq-text').textContent = '\u201c' + q.text + '\u201d';
+  document.getElementById('dq-author').textContent = '\u2014 ' + q.author;
+
+  updateClock();
+  setInterval(updateClock, 1000);
+  renderEntries();
+  renderTimeline();
+}
+
+function updateClock() {
+  const now = new Date();
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  const ds = now.toLocaleDateString('en-US', opts);
+  const ts = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('top-date').textContent = ds;
+  document.getElementById('editor-datestamp').textContent = ds;
+  document.getElementById('editor-timestamp').textContent = ts;
+}
+
+// ── New Entry ──
+function newEntry() {
+  editingId = null;
+  document.getElementById('entry-title').value = '';
+  document.getElementById('entry-body').value  = '';
+  document.getElementById('quote-input').value = '';
+  currentLinks = []; currentImages = []; selectedMood = '';
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  renderLinksList(); renderImagesGrid();
+  ['quote-section','links-section','images-section'].forEach(id =>
+    document.getElementById(id).classList.remove('visible'));
+  ['btn-quote','btn-links','btn-images'].forEach(id =>
+    document.getElementById(id).classList.remove('active'));
+  document.getElementById('editor-card').scrollIntoView({behavior:'smooth'});
+}
+
+// ── Mood ──
+function selectMood(btn) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedMood = btn.dataset.mood;
+}
+
+// ── Toggle sections ──
+function toggleSection(sectionId, btnId) {
+  document.getElementById(sectionId).classList.toggle('visible');
+  document.getElementById(btnId).classList.toggle('active');
+}
+
+// ── Auto-resize ──
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+// ── Links ──
+function addLink() {
+  const url   = document.getElementById('link-url').value.trim();
+  const label = document.getElementById('link-label').value.trim();
+  if (!url) return;
+  currentLinks.push({url, label: label || url});
+  document.getElementById('link-url').value   = '';
+  document.getElementById('link-label').value = '';
+  renderLinksList();
+}
+function removeLink(idx) { currentLinks.splice(idx, 1); renderLinksList(); }
+function renderLinksList() {
+  document.getElementById('links-list').innerHTML = currentLinks.map((l, i) => `
+    <div class="link-item">
+      <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>
+      <span class="remove-link" onclick="removeLink(${i})">×</span>
+    </div>`).join('');
+}
+
+// ── Images ──
+function addImageFromUrl() {
+  const url = document.getElementById('img-url').value.trim();
+  if (!url) return;
+  currentImages.push(url);
+  document.getElementById('img-url').value = '';
+  renderImagesGrid();
+}
+function handleFileUpload(input) {
+  Array.from(input.files).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => { currentImages.push(e.target.result); renderImagesGrid(); };
+    r.readAsDataURL(f);
+  });
+  input.value = '';
+}
+function removeImage(idx) { currentImages.splice(idx, 1); renderImagesGrid(); }
+function renderImagesGrid() {
+  document.getElementById('images-grid').innerHTML = currentImages.map((src, i) => `
+    <div class="img-item">
+      <img src="${esc(src)}" alt="journal image" />
+      <button class="remove-img" onclick="removeImage(${i})">×</button>
+    </div>`).join('');
+}
+
+// ── Save ──
+function saveEntry() {
+  const title = document.getElementById('entry-title').value.trim();
+  const body  = document.getElementById('entry-body').value.trim();
+  const quote = document.getElementById('quote-input').value.trim();
+  if (!title && !body) return;
+  const now = new Date();
+  const entry = {
+    id:      editingId || Date.now(),
+    title:   title || 'Untitled',
+    body, quote,
+    mood:    selectedMood,
+    links:   [...currentLinks],
+    images:  [...currentImages],
+    date:    now.toISOString(),
+    dateStr: now.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'}),
+    timeStr: now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'}),
+    year:    now.getFullYear(),
+    month:   now.getMonth(),
+    day:     now.getDate()
+  };
+  if (editingId) {
+    const idx = entries.findIndex(e => e.id === editingId);
+    if (idx !== -1) entries[idx] = entry;
+  } else {
+    entries.unshift(entry);
+  }
+  localStorage.setItem('journal_entries', JSON.stringify(entries));
+  editingId = null;
+  const fb = document.getElementById('save-feedback');
+  fb.classList.add('show');
+  setTimeout(() => fb.classList.remove('show'), 2000);
+  newEntry(); renderEntries(); renderTimeline();
+}
+
+// ── Render Entries ──
+function renderEntries() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const list  = document.getElementById('entries-list');
+  const empty = document.getElementById('empty-state');
+  let filtered = entries.filter(e =>
+    !q || e.title.toLowerCase().includes(q) ||
+    (e.body||'').toLowerCase().includes(q) ||
+    (e.quote||'').toLowerCase().includes(q)
+  );
+  if (!filtered.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = filtered.map(e => `
+    <div class="entry-card" onclick="openEntry(${e.id})">
+      <button class="entry-card-delete" onclick="deleteEntry(event,${e.id})">×</button>
+      <div class="entry-card-header">
+        <div>
+          ${e.mood ? `<div class="entry-card-mood">${e.mood}</div>` : ''}
+          <div class="entry-card-title">${esc(e.title)}</div>
+        </div>
+        <div class="entry-card-meta">
+          <div class="entry-card-date">${e.dateStr}</div>
+          <div class="entry-card-time">${e.timeStr}</div>
+        </div>
+      </div>
+      ${e.body  ? `<div class="entry-card-body">${esc(e.body)}</div>` : ''}
+      ${e.quote ? `<div class="entry-card-quote">${esc(e.quote)}</div>` : ''}
+      ${(e.images && e.images.length) ? `
+        <div class="entry-card-thumbs">
+          ${e.images.slice(0,4).map(s=>`<img class="thumb" src="${esc(s)}" alt="" />`).join('')}
+          ${e.images.length>4?`<div class="attachment-pill">+${e.images.length-4} more</div>`:''}
+        </div>` : ''}
+      ${(e.links && e.links.length) ? `
+        <div class="entry-card-attachments">
+          <div class="attachment-pill">🔗 ${e.links.length} link${e.links.length>1?'s':''}</div>
+        </div>` : ''}
+    </div>`).join('');
+}
+
+// ── Delete ──
+function deleteEntry(evt, id) {
+  evt.stopPropagation();
+  if (!confirm('Delete this entry?')) return;
+  entries = entries.filter(e => e.id !== id);
+  localStorage.setItem('journal_entries', JSON.stringify(entries));
+  renderEntries(); renderTimeline();
+}
+
+// ── Open Modal ──
+function openEntry(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('modal-mood').textContent  = e.mood || '';
+  document.getElementById('modal-title').textContent = e.title;
+  document.getElementById('modal-meta').textContent  = `${e.dateStr}  ·  ${e.timeStr}`;
+  document.getElementById('modal-body').textContent  = e.body || '';
+  const qw = document.getElementById('modal-quote-wrap');
+  if (e.quote) { document.getElementById('modal-quote').textContent = e.quote; qw.style.display='block'; }
+  else qw.style.display='none';
+  const lw = document.getElementById('modal-links');
+  if (e.links && e.links.length) {
+    document.getElementById('modal-links-list').innerHTML =
+      e.links.map(l=>`<a class="modal-link" href="${esc(l.url)}" target="_blank" rel="noopener">🔗 ${esc(l.label)}</a>`).join('');
+    lw.style.display='block';
+  } else lw.style.display='none';
+  const iw = document.getElementById('modal-images');
+  if (e.images && e.images.length) {
+    document.getElementById('modal-images-grid').innerHTML =
+      e.images.map(s=>`<img src="${esc(s)}" alt="image" onclick="window.open('${esc(s)}','_blank')" />`).join('');
+    iw.style.display='block';
+  } else iw.style.display='none';
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(evt) {
+  if (evt.target === document.getElementById('modal-overlay')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── Timeline ──
+function renderTimeline() {
+  const el = document.getElementById('timeline');
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const tree = {};
+  entries.forEach(e => {
+    const y = e.year, m = e.month;
+    if (!tree[y]) tree[y] = {};
+    if (!tree[y][m]) tree[y][m] = [];
+    tree[y][m].push(e);
+  });
+  const years = Object.keys(tree).sort((a,b)=>b-a);
+  if (!years.length) { el.innerHTML=''; return; }
+  el.innerHTML = years.map(y => `
+    <div class="year-group">
+      <div class="year-label open" onclick="toggleTL(this,'months-${y}')">
+        <span class="caret">▶</span> ${y}
+      </div>
+      <div class="month-group open" id="months-${y}">
+        ${Object.keys(tree[y]).sort((a,b)=>b-a).map(m=>`
+          <div>
+            <div class="month-label open" onclick="toggleTL(this,'days-${y}-${m}')">
+              <span class="caret">▶</span> ${MONTHS[m]}
+              <span style="color:#3a4e28;font-size:10px;">${tree[y][m].length}</span>
+            </div>
+            <div class="day-entries open" id="days-${y}-${m}">
+              ${tree[y][m].map(e=>`
+                <div class="day-entry-item" onclick="openEntry(${e.id})">
+                  <span class="etitle">${e.mood?e.mood+' ':''}${esc(e.title)}</span>
+                  <span class="emeta">${e.day} · ${e.timeStr}</span>
+                </div>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleTL(labelEl, childId) {
+  const c = document.getElementById(childId);
+  if (!c) return;
+  const open = c.classList.contains('open');
+  c.classList.toggle('open', !open);
+  labelEl.classList.toggle('open', !open);
+}
+
+// ── Util ──
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>
