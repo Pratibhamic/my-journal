@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Journal</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sidebar:  #1a2012;
+  --text:     #1c1c1e;
+  --sub:      #6b6b6e;
+  --line:     #e0dbd2;
+  --gold:     #c9a96e;
+  --gold2:    #f0e4c8;
+  --surface:  rgba(255,255,255,0.82);
+  --red:      #e05252;
+  --green:    #52b788;
+  --blue:     #4a90d9;
+  --radius:   14px;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+#nature-bg {
+  position: fixed; inset: 0; z-index: 0;
+  transition: background 3s ease;
+}
+.particle {
+  position: fixed; pointer-events: none;
+  animation: drift linear infinite; opacity: 0; z-index: 2;
+}
+@keyframes drift {
+  0%   { transform: translateY(-40px) rotate(0deg);   opacity: 0; }
+  10%  { opacity: 0.7; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+#shimmer {
+  position: fixed; inset: 0; z-index: 1;
+  background: radial-gradient(ellipse at 60% 0%, rgba(255,255,255,0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ── Sidebar ── */
+#sidebar {
+  position: relative; z-index: 10;
+  width: 220px; min-width: 220px;
+  background: rgba(22,30,14,0.93);
+  backdrop-filter: blur(16px);
+  color: #e5e1da;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+#sidebar-header {
+  padding: 24px 18px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+#sidebar-header h1 {
+  font-family: var(--font-serif); font-size: 20px;
+  font-weight: 400; letter-spacing: 0.04em; color: var(--gold);
+}
+#sidebar-header p {
+  font-size: 10px; color: #6a7c55; margin-top: 3px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+/* Nav tabs in sidebar */
+#sidebar-tabs {
+  display: flex; border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.stab {
+  flex: 1; padding: 10px 0; text-align: center;
+  font-size: 11px; color: #556644; cursor: pointer;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  transition: color 0.2s, background 0.2s;
+  border-bottom: 2px solid transparent;
+}
+.stab:hover { color: #99bb77; }
+.stab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+#sidebar-content { flex: 1; overflow-y: auto; padding: 0 0 16px; scrollbar-width: thin; scrollbar-color: #3a4a28 transparent; }
+
+/* Timeline */
+#timeline { display: block; }
+.year-label {
+  padding: 8px 18px 4px; font-size: 10px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: #556644; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+}
+.year-label:hover { color: #99bb77; }
+.year-label .caret { font-size: 8px; transition: transform 0.2s; }
+.year-label.open .caret { transform: rotate(90deg); }
+.month-group { display: none; }
+.month-group.open { display: block; }
+.month-label {
+  padding: 6px 18px 4px 26px; font-size: 11px;
+  color: #7a9960; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; letter-spacing: 0.05em;
+}
+.month-label:hover { color: #bbd9a0; }
+.month-label .caret { font-size: 8px; transition: transform 0.2s; }
+.month-label.open .caret { transform: rotate(90deg); }
+.day-entries { display: none; }
+.day-entries.open { display: block; }
+.day-entry-item {
+  padding: 5px 18px 5px 34px; font-size: 11px;
+  color: #8a9e78; cursor: pointer;
+  border-left: 2px solid transparent; transition: all 0.15s; line-height: 1.4;
+}
+.day-entry-item:hover { color: #cce0aa; background: rgba(255,255,255,0.04); }
+.day-entry-item.active { color: var(--gold); border-left-color: var(--gold); }
+.day-entry-item .etitle { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-entry-item .emeta  { font-size: 10px; color: #4a5e38; margin-top: 1px; }
+
+/* Calendar in sidebar */
+#sidebar-calendar { padding: 12px; display: none; }
+#sidebar-calendar.active { display: block; }
+.cal-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cal-nav button {
+  background: none; border: none; color: #7a9960;
+  font-size: 16px; cursor: pointer; padding: 2px 6px;
+  border-radius: 4px; transition: background 0.15s;
+}
+.cal-nav button:hover { background: rgba(255,255,255,0.08); color: #cce0aa; }
+.cal-nav-title {
+  font-size: 12px; color: #bbd9a0;
+  font-family: var(--font-serif); letter-spacing: 0.04em;
+}
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.cal-dow {
+  text-align: center; font-size: 9px; color: #556644;
+  padding: 4px 0; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.cal-day {
+  text-align: center; font-size: 11px; color: #7a9960;
+  padding: 5px 2px; border-radius: 6px; cursor: pointer;
+  transition: background 0.15s, color 0.15s; min-height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.cal-day:hover { background: rgba(255,255,255,0.08); color: #cce0aa; }
+.cal-day.today { background: rgba(201,169,110,0.25); color: var(--gold); font-weight: 600; }
+.cal-day.has-entry::after {
+  content: ''; position: absolute; bottom: 3px; left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--green);
+}
+.cal-day.empty { cursor: default; }
+.cal-day.other-month { color: #3a4e28; }
+
+/* ── Main ── */
+#main {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; position: relative; z-index: 10;
+}
+
+/* ── Top Bar ── */
+#top-bar {
+  padding: 14px 24px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.35); backdrop-filter: blur(20px);
+  flex-wrap: wrap;
+}
+#top-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+#season-icon { font-size: 18px; flex-shrink: 0; }
+#top-date { font-family: var(--font-serif); font-size: 14px; color: #3a4a2a; white-space: nowrap; }
+
+/* Tab switcher */
+#view-tabs {
+  display: flex; gap: 4px;
+  background: rgba(255,255,255,0.4); border-radius: 10px; padding: 3px;
+}
+.vtab {
+  padding: 6px 14px; border-radius: 8px; border: none;
+  background: transparent; font-size: 12px; color: #5a6a4a;
+  cursor: pointer; transition: all 0.15s; font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.vtab:hover { background: rgba(255,255,255,0.5); }
+.vtab.active { background: white; color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+#top-right { display: flex; align-items: center; gap: 10px; }
+
+#new-entry-topbtn {
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #7aaa5a, #4e8a36);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(78,138,54,0.3);
+}
+#new-entry-topbtn:hover { opacity: 0.85; }
+
+#search-wrap { position: relative; }
+#search {
+  background: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 20px; padding: 7px 14px 7px 30px; font-size: 13px;
+  color: var(--text); width: 180px; outline: none;
+  backdrop-filter: blur(8px); transition: border-color 0.2s;
+}
+#search:focus { border-color: var(--gold); background: rgba(255,255,255,0.9); }
+#search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--sub); font-size: 12px; pointer-events: none; }
+
+/* ── Views ── */
+#view-write, #view-calendar { display: none; }
+#view-write.active, #view-calendar.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* ── Editor Panel ── */
+#editor-panel {
+  flex: 1; overflow-y: auto;
+  padding: 24px 28px 40px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+/* Daily Quote Banner */
+#daily-quote-banner {
+  border-radius: var(--radius); padding: 18px 24px;
+  background: rgba(255,255,255,0.45); backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.6);
+  display: flex; gap: 14px; align-items: flex-start;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+#dq-leaf { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+#dq-text { font-family: var(--font-serif); font-size: 15px; font-style: italic; color: #3a4a2a; line-height: 1.7; }
+#dq-author { font-size: 11px; color: #7a9960; margin-top: 5px; letter-spacing: 0.04em; }
+
+/* Editor Card */
+#editor-card {
+  background: var(--surface); backdrop-filter: blur(20px);
+  border-radius: var(--radius); padding: 24px 28px;
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+}
+#editor-date-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+#editor-datestamp { font-family: var(--font-serif); font-size: 13px; color: var(--sub); }
+#editor-timestamp { font-size: 12px; color: #aaa; }
+
+#mood-row { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; flex-wrap: wrap; }
+#mood-label { font-size: 10px; color: var(--sub); text-transform: uppercase; letter-spacing: 0.08em; margin-right: 3px; }
+.mood-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid transparent; background: rgba(255,255,255,0.5);
+  font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.mood-btn:hover { transform: scale(1.18); background: rgba(255,255,255,0.85); }
+.mood-btn.selected { border-color: var(--gold); background: var(--gold2); }
+
+#entry-title {
+  width: 100%; border: none; outline: none; background: transparent;
+  font-family: var(--font-serif); font-size: 24px; font-weight: 400;
+  color: var(--text); margin-bottom: 12px;
+}
+#entry-title::placeholder { color: #c8c4bc; }
+#entry-body {
+  width: 100%; border: none; outline: none; background: transparent;
+  font-family: var(--font-sans); font-size: 15px; color: var(--text);
+  line-height: 1.8; resize: none; min-height: 130px;
+}
+#entry-body::placeholder { color: #c8c4bc; }
+
+.editor-divider { border: none; border-top: 1px solid var(--line); margin: 14px 0; }
+
+#quote-section { display: none; }
+#quote-section.visible { display: block; }
+#quote-input {
+  width: 100%; border: none; outline: none; background: transparent;
+  font-family: var(--font-serif); font-size: 16px; font-style: italic;
+  color: var(--sub); line-height: 1.7; resize: none;
+  padding-left: 16px; border-left: 3px solid var(--gold); min-height: 54px;
+}
+#quote-input::placeholder { color: #ccc; }
+
+#links-section { display: none; }
+#links-section.visible { display: block; }
+#links-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 9px; }
+.link-item {
+  display: flex; align-items: center; gap: 9px;
+  background: rgba(122,170,90,0.1); border-radius: 8px; padding: 7px 11px; font-size: 13px;
+}
+.link-item a { color: var(--blue); text-decoration: none; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-item a:hover { text-decoration: underline; }
+.link-item .remove-link { color: #ccc; cursor: pointer; font-size: 16px; }
+.link-item .remove-link:hover { color: var(--red); }
+#link-input-row { display: flex; gap: 7px; }
+#link-url, #link-label {
+  flex: 1; border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 11px; font-size: 13px; background: rgba(255,255,255,0.7); color: var(--text); outline: none;
+}
+#link-url:focus, #link-label:focus { border-color: var(--gold); }
+#link-url { flex: 2; }
+#add-link-btn {
+  padding: 7px 14px; background: linear-gradient(135deg,#7aaa5a,#4e8a36);
+  color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer;
+}
+
+#images-section { display: none; }
+#images-section.visible { display: block; }
+#images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 9px; margin-bottom: 10px; }
+.img-item { position: relative; border-radius: 9px; overflow: hidden; aspect-ratio: 1; background: rgba(0,0,0,0.05); }
+.img-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-item .remove-img {
+  position: absolute; top: 5px; right: 5px; width: 20px; height: 20px;
+  background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 50%;
+  cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.15s;
+}
+.img-item:hover .remove-img { opacity: 1; }
+#img-input-row { display: flex; gap: 7px; align-items: center; }
+#img-url {
+  flex: 1; border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 11px; font-size: 13px; background: rgba(255,255,255,0.7); color: var(--text); outline: none;
+}
+#img-url:focus { border-color: var(--gold); }
+#img-file { display: none; }
+#add-img-btn { padding: 7px 13px; background: linear-gradient(135deg,#7aaa5a,#4e8a36); color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
+#img-file-btn { padding: 7px 13px; background: rgba(255,255,255,0.6); color: var(--sub); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; }
+
+#editor-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  padding-top: 14px; border-top: 1px solid var(--line); flex-wrap: wrap;
+}
+.tool-btn {
+  padding: 6px 12px; border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 8px; background: rgba(255,255,255,0.5); color: var(--sub);
+  font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;
+  transition: all 0.15s; backdrop-filter: blur(4px);
+}
+.tool-btn:hover { background: rgba(255,255,255,0.85); color: var(--text); }
+.tool-btn.active { background: var(--gold2); color: #6b4c1a; border-color: var(--gold); }
+#save-btn {
+  margin-left: auto; padding: 8px 22px;
+  background: linear-gradient(135deg, #5a8a3a, #3a6020);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(58,96,32,0.3);
+}
+#save-btn:hover { opacity: 0.88; }
+#save-feedback { font-size: 12px; color: var(--green); opacity: 0; transition: opacity 0.3s; margin-left: 8px; }
+#save-feedback.show { opacity: 1; }
+
+/* Entries */
+#entries-header { font-size: 11px; color: #7a8c6a; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px; }
+#entries-list { display: flex; flex-direction: column; gap: 12px; }
+.entry-card {
+  background: var(--surface); backdrop-filter: blur(16px);
+  border-radius: var(--radius); padding: 20px 24px;
+  border: 1px solid rgba(255,255,255,0.7); cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s; position: relative;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+.entry-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.09); transform: translateY(-1px); }
+.entry-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; gap: 12px; }
+.entry-card-title { font-family: var(--font-serif); font-size: 17px; font-weight: 400; color: var(--text); line-height: 1.3; }
+.entry-card-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.entry-card-date { font-size: 11px; color: var(--sub); }
+.entry-card-time { font-size: 11px; color: #bbb; }
+.entry-card-mood { font-size: 18px; line-height: 1; margin-bottom: 2px; }
+.entry-card-body { font-size: 14px; color: var(--sub); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.entry-card-quote { margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--gold2); font-family: var(--font-serif); font-style: italic; font-size: 13px; color: var(--sub); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.entry-card-attachments { display: flex; align-items: center; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+.attachment-pill { display: flex; align-items: center; gap: 4px; background: rgba(122,170,90,0.12); border-radius: 20px; padding: 3px 9px; font-size: 11px; color: #7a9960; }
+.entry-card-thumbs { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+.thumb { width: 52px; height: 52px; border-radius: 7px; object-fit: cover; }
+.entry-card-delete { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 4px; border-radius: 6px; opacity: 0; transition: opacity 0.15s; }
+.entry-card:hover .entry-card-delete { opacity: 1; }
+.entry-card-delete:hover { color: var(--red); }
+
+#empty-state { text-align: center; padding: 50px 20px; color: #aaa; }
+#empty-state .big { font-size: 48px; margin-bottom: 14px; }
+#empty-state p { font-size: 15px; line-height: 1.6; }
+
+/* ── Calendar View ── */
+#view-calendar { background: transparent; }
+#cal-main { flex: 1; overflow-y: auto; padding: 24px 28px 40px; }
+
+#cal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 22px;
+}
+#cal-month-title {
+  font-family: var(--font-serif); font-size: 26px; font-weight: 400; color: #fff;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.2);
+}
+.cal-nav-main { display: flex; gap: 8px; }
+.cal-nav-main button {
+  padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.25); backdrop-filter: blur(8px);
+  color: #fff; font-size: 14px; cursor: pointer; transition: background 0.2s;
+}
+.cal-nav-main button:hover { background: rgba(255,255,255,0.4); }
+
+#cal-grid-main {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 8px; margin-bottom: 8px;
+}
+.cal-dow-main {
+  text-align: center; font-size: 11px; color: rgba(255,255,255,0.6);
+  padding: 6px 0; letter-spacing: 0.08em; text-transform: uppercase;
+  font-weight: 500;
+}
+.cal-cell {
+  min-height: 90px; background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px); border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 8px; cursor: pointer; transition: all 0.15s;
+  position: relative; overflow: hidden;
+}
+.cal-cell:hover { background: rgba(255,255,255,0.35); transform: scale(1.02); }
+.cal-cell.today { border-color: var(--gold); background: rgba(201,169,110,0.25); }
+.cal-cell.has-entry { border-color: rgba(82,183,136,0.5); background: rgba(82,183,136,0.15); }
+.cal-cell.has-entry .cal-cell-day::after {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-left: 5px;
+  vertical-align: middle;
+  box-shadow: 0 0 6px rgba(82,183,136,0.6);
+}
+.cal-cell.other-month { background: rgba(255,255,255,0.07); }
+.cal-cell.other-month .cal-cell-day { color: rgba(255,255,255,0.3); }
+.cal-cell.empty { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
+
+.cal-cell-day {
+  font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);
+  margin-bottom: 5px; line-height: 1;
+}
+.cal-cell.today .cal-cell-day { color: var(--gold); }
+
+.cal-entry-chip {
+  font-size: 10px; color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.2); border-radius: 6px;
+  padding: 2px 6px; margin-bottom: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; transition: background 0.15s;
+  display: flex; align-items: center; gap: 3px;
+}
+.cal-entry-chip:hover { background: rgba(255,255,255,0.4); }
+.cal-more { font-size: 10px; color: rgba(255,255,255,0.5); padding: 1px 4px; }
+
+/* ── Modal ── */
+#modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4); z-index: 200;
+  align-items: center; justify-content: center; padding: 24px;
+  backdrop-filter: blur(4px);
+}
+#modal-overlay.open { display: flex; }
+#modal {
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(20px);
+  border-radius: 18px; max-width: 660px; width: 100%;
+  max-height: 88vh; overflow-y: auto;
+  padding: 34px 38px; position: relative;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+}
+#modal-close {
+  position: absolute; top: 14px; right: 14px;
+  background: rgba(0,0,0,0.06); border: none; border-radius: 50%;
+  width: 30px; height: 30px; font-size: 17px; cursor: pointer;
+  color: var(--sub); display: flex; align-items: center; justify-content: center;
+}
+#modal-close:hover { background: rgba(0,0,0,0.12); }
+#modal-mood { font-size: 36px; margin-bottom: 8px; }
+#modal-title { font-family: var(--font-serif); font-size: 26px; font-weight: 400; margin-bottom: 5px; }
+#modal-meta { font-size: 12px; color: var(--sub); margin-bottom: 22px; }
+#modal-body { font-size: 15px; line-height: 1.85; color: var(--text); white-space: pre-wrap; margin-bottom: 18px; }
+#modal-quote-wrap { padding: 13px 18px; border-left: 3px solid var(--gold); background: rgba(201,169,110,0.08); border-radius: 0 8px 8px 0; margin-bottom: 18px; }
+#modal-quote { font-family: var(--font-serif); font-style: italic; font-size: 16px; color: var(--sub); line-height: 1.7; }
+#modal-links { margin-bottom: 18px; }
+#modal-links h4, #modal-images h4 { font-size: 11px; color: var(--sub); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+.modal-link { display: block; color: var(--blue); font-size: 14px; text-decoration: none; margin-bottom: 4px; }
+.modal-link:hover { text-decoration: underline; }
+#modal-images { margin-bottom: 18px; }
+#modal-images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 9px; }
+#modal-images-grid img { width: 100%; border-radius: 9px; object-fit: cover; aspect-ratio: 1; cursor: pointer; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<div id="nature-bg"></div>
+<div id="shimmer"></div>
+<div id="particles"></div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div id="sidebar-header">
+    <h1>Journal</h1>
+    <p id="sidebar-scene-label">Your private space</p>
+  </div>
+
+  <div id="sidebar-tabs">
+    <div class="stab active" onclick="switchSideTab('timeline')">Timeline</div>
+    <div class="stab" onclick="switchSideTab('cal')">Calendar</div>
+  </div>
+
+  <div id="sidebar-content">
+    <div id="timeline"></div>
+    <div id="sidebar-calendar">
+      <div class="cal-nav">
+        <button onclick="sideCalPrev()">‹</button>
+        <div class="cal-nav-title" id="side-cal-title"></div>
+        <button onclick="sideCalNext()">›</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-dow">S</div><div class="cal-dow">M</div><div class="cal-dow">T</div>
+        <div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow">S</div>
+      </div>
+      <div class="cal-grid" id="side-cal-grid"></div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="top-bar">
+    <div id="top-left">
+      <span id="season-icon"></span>
+      <span id="top-date"></span>
+    </div>
+    <div id="view-tabs">
+      <button class="vtab active" onclick="switchView('write')">✏️ Write</button>
+      <button class="vtab" onclick="switchView('calendar')">📅 Calendar</button>
+    </div>
+    <div id="top-right">
+      <button id="new-entry-topbtn" onclick="newEntry()">+ New Entry</button>
+      <div id="search-wrap">
+        <span id="search-icon">🔍</span>
+        <input id="search" type="text" placeholder="Search…" oninput="renderEntries()" />
+      </div>
+    </div>
+  </div>
+
+  <!-- WRITE VIEW -->
+  <div id="view-write" class="active">
+    <div id="editor-panel">
+
+      <div id="daily-quote-banner">
+        <div id="dq-leaf"></div>
+        <div>
+          <div id="dq-text"></div>
+          <div id="dq-author"></div>
+        </div>
+      </div>
+
+      <div id="editor-card">
+        <div id="editor-date-row">
+          <div id="editor-datestamp"></div>
+          <div id="editor-timestamp"></div>
+        </div>
+        <div id="mood-row">
+          <span id="mood-label">Mood</span>
+          <button class="mood-btn" data-mood="😊" onclick="selectMood(this)">😊</button>
+          <button class="mood-btn" data-mood="😌" onclick="selectMood(this)">😌</button>
+          <button class="mood-btn" data-mood="😔" onclick="selectMood(this)">😔</button>
+          <button class="mood-btn" data-mood="😤" onclick="selectMood(this)">😤</button>
+          <button class="mood-btn" data-mood="🥳" onclick="selectMood(this)">🥳</button>
+          <button class="mood-btn" data-mood="😴" onclick="selectMood(this)">😴</button>
+          <button class="mood-btn" data-mood="🤔" onclick="selectMood(this)">🤔</button>
+          <button class="mood-btn" data-mood="❤️" onclick="selectMood(this)">❤️</button>
+          <button class="mood-btn" data-mood="🌱" onclick="selectMood(this)">🌱</button>
+        </div>
+        <input id="entry-title" type="text" placeholder="Give this entry a title…" />
+        <textarea id="entry-body" placeholder="What's on your mind today?" oninput="autoResize(this)"></textarea>
+
+        <div id="quote-section">
+          <hr class="editor-divider" />
+          <textarea id="quote-input" placeholder="Add a quote that speaks to you…" oninput="autoResize(this)"></textarea>
+        </div>
+        <div id="links-section">
+          <hr class="editor-divider" />
+          <div id="links-list"></div>
+          <div id="link-input-row">
+            <input id="link-url" type="url" placeholder="https://…" />
+            <input id="link-label" type="text" placeholder="Label (optional)" />
+            <button id="add-link-btn" onclick="addLink()">Add</button>
+          </div>
+        </div>
+        <div id="images-section">
+          <hr class="editor-divider" />
+          <div id="images-grid"></div>
+          <div id="img-input-row">
+            <input id="img-url" type="url" placeholder="Paste image URL…" />
+            <button id="add-img-btn" onclick="addImageFromUrl()">Add URL</button>
+            <button id="img-file-btn" onclick="document.getElementById('img-file').click()">Upload</button>
+            <input id="img-file" type="file" accept="image/*" multiple onchange="handleFileUpload(this)" />
+          </div>
+        </div>
+
+        <div id="editor-toolbar">
+          <button class="tool-btn" id="btn-quote"  onclick="toggleSection('quote-section','btn-quote')">❝ Quote</button>
+          <button class="tool-btn" id="btn-links"  onclick="toggleSection('links-section','btn-links')">🔗 Links</button>
+          <button class="tool-btn" id="btn-images" onclick="toggleSection('images-section','btn-images')">🖼 Images</button>
+          <button id="save-btn" onclick="saveEntry()">Save Entry</button>
+          <span id="save-feedback">✓ Saved</span>
+        </div>
+      </div>
+
+      <div id="entries-section">
+        <div id="entries-header">Your Entries</div>
+        <div id="entries-list"></div>
+        <div id="empty-state" style="display:none;">
+          <div class="big">🌿</div>
+          <p>Your journal is empty.<br>Begin with a single thought.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALENDAR VIEW -->
+  <div id="view-calendar">
+    <div id="cal-main">
+      <div id="cal-header">
+        <div id="cal-month-title"></div>
+        <div class="cal-nav-main">
+          <button onclick="calPrev()">‹ Prev</button>
+          <button onclick="calToday()">Today</button>
+          <button onclick="calNext()">Next ›</button>
+        </div>
+      </div>
+      <div id="cal-grid-main">
+        <div class="cal-dow-main">Sun</div>
+        <div class="cal-dow-main">Mon</div>
+        <div class="cal-dow-main">Tue</div>
+        <div class="cal-dow-main">Wed</div>
+        <div class="cal-dow-main">Thu</div>
+        <div class="cal-dow-main">Fri</div>
+        <div class="cal-dow-main">Sat</div>
+      </div>
+      <div id="cal-cells"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal">
+    <button id="modal-close" onclick="closeModalDirect()">✕</button>
+    <div id="modal-mood"></div>
+    <div id="modal-title"></div>
+    <div id="modal-meta"></div>
+    <div id="modal-body"></div>
+    <div id="modal-quote-wrap" style="display:none;"><div id="modal-quote"></div></div>
+    <div id="modal-links"  style="display:none;"><h4>Links</h4><div id="modal-links-list"></div></div>
+    <div id="modal-images" style="display:none;"><h4>Images</h4><div id="modal-images-grid"></div></div>
+  </div>
+</div>
+
+<script>
+// ── Quotes ──
+const QUOTES = [
+  { text: "The earth has music for those who listen.", author: "William Shakespeare" },
+  { text: "In every walk with nature, one receives far more than he seeks.", author: "John Muir" },
+  { text: "Look deep into nature, and then you will understand everything better.", author: "Albert Einstein" },
+  { text: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
+  { text: "The clearest way into the Universe is through a forest wilderness.", author: "John Muir" },
+  { text: "Life is not measured by the breaths we take, but by the moments that take our breath away.", author: "Maya Angelou" },
+  { text: "Adopt the pace of nature: her secret is patience.", author: "Ralph Waldo Emerson" },
+  { text: "The sun is a daily reminder that we too can rise again from the darkness.", author: "S. Ajna" },
+  { text: "Every morning is a chance at a new day.", author: "Marjorie Pay Hinckley" },
+  { text: "Trees are poems that the earth writes upon the sky.", author: "Kahlil Gibran" },
+  { text: "Let your life lightly dance on the edges of time like dew on the tip of a leaf.", author: "Rabindranath Tagore" },
+  { text: "Even the darkest night will end and the sun will rise.", author: "Victor Hugo" },
+  { text: "Like wildflowers, you must allow yourself to grow in all the places people never thought you would.", author: "E.V." },
+  { text: "Be like a tree and let the dead leaves drop.", author: "Rumi" },
+  { text: "The mountains are calling and I must go.", author: "John Muir" },
+  { text: "Keep your face always toward the sunshine, and shadows will fall behind you.", author: "Walt Whitman" },
+  { text: "Wherever you go, go with all your heart.", author: "Confucius" },
+  { text: "Rivers know this: there is no hurry. We shall get there some day.", author: "A.A. Milne" },
+  { text: "Breathe. Let go. And remind yourself that this very moment is the only one you know you have for sure.", author: "Oprah Winfrey" },
+  { text: "One touch of nature makes the whole world kin.", author: "William Shakespeare" },
+  { text: "Start where you are. Use what you have. Do what you can.", author: "Arthur Ashe" },
+  { text: "You are braver than you believe, stronger than you seem, and smarter than you think.", author: "A.A. Milne" },
+  { text: "Go confidently in the direction of your dreams.", author: "Henry David Thoreau" },
+  { text: "Nature does not hurry, yet everything is accomplished.", author: "Lao Tzu" },
+  { text: "A river cuts through rock not because of its power but because of its persistence.", author: "James Watkins" },
+  { text: "What we plant in the soil of contemplation, we shall reap in the harvest of action.", author: "Meister Eckhart" },
+  { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
+  { text: "Wherever life plants you, bloom with grace.", author: "French Proverb" },
+  { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+  { text: "She is both hellfire and holy water.", author: "Sneha Pal" },
+];
+
+// ── Scenes ──
+const SCENES = {
+  dawn:      { label:"Dawn",         icon:"🌅", leaf:"🌸", bg:"linear-gradient(160deg,#ff9a56 0%,#ffcc80 30%,#ffe0b2 55%,#b3e5fc 100%)", particle:["🌸","🍃","✨","🌷"] },
+  morning:   { label:"Morning",      icon:"🌤", leaf:"🌿", bg:"linear-gradient(160deg,#a8d8a8 0%,#c8e6c9 30%,#e8f5e9 55%,#fff9e6 100%)", particle:["🍃","🌿","🌾","✨"] },
+  afternoon: { label:"Afternoon",    icon:"☀️", leaf:"🌻", bg:"linear-gradient(160deg,#81c784 0%,#a5d6a7 25%,#c8e6c9 50%,#f1f8e9 100%)", particle:["🦋","🌻","🍃","🌼"] },
+  golden:    { label:"Golden Hour",  icon:"🌇", leaf:"🍂", bg:"linear-gradient(160deg,#f4a030 0%,#f0c060 25%,#ffe082 50%,#fff8e1 85%,#fce4ec 100%)", particle:["🍂","🍁","🌾","✨"] },
+  dusk:      { label:"Dusk",         icon:"🌆", leaf:"🌙", bg:"linear-gradient(160deg,#5c3d8f 0%,#7b5ca5 25%,#b39ddb 50%,#f3e5f5 85%,#fce4ec 100%)", particle:["🌙","⭐","🍂","✨"] },
+  night:     { label:"Night",        icon:"🌌", leaf:"⭐", bg:"linear-gradient(160deg,#0d1b2a 0%,#1a2744 30%,#243050 55%,#1e3a5f 80%,#2a1a3a 100%)", particle:["⭐","🌙","✨","💫"] },
+};
+function getScene() {
+  const h = new Date().getHours();
+  if (h>=5&&h<8) return SCENES.dawn;
+  if (h>=8&&h<12) return SCENES.morning;
+  if (h>=12&&h<17) return SCENES.afternoon;
+  if (h>=17&&h<19) return SCENES.golden;
+  if (h>=19&&h<21) return SCENES.dusk;
+  return SCENES.night;
+}
+function applyScene(scene) {
+  document.getElementById('nature-bg').style.background = scene.bg;
+  document.getElementById('season-icon').textContent = scene.icon + ' ';
+  document.getElementById('dq-leaf').textContent = scene.leaf;
+  document.getElementById('sidebar-scene-label').textContent = scene.label;
+}
+function spawnParticles(scene) {
+  const c = document.getElementById('particles');
+  c.innerHTML = '';
+  for (let i=0;i<16;i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = scene.particle[Math.floor(Math.random()*scene.particle.length)];
+    p.style.cssText = `left:${Math.random()*100}%;font-size:${10+Math.random()*16}px;animation-duration:${12+Math.random()*20}s;animation-delay:${-Math.random()*20}s;`;
+    c.appendChild(p);
+  }
+}
+
+// ── State ──
+let entries = [];
+let currentLinks=[], currentImages=[], selectedMood='', editingId=null;
+let calYear = new Date().getFullYear(), calMonth = new Date().getMonth();
+
+// ── IndexedDB ──
+const DB_NAME = 'journal_db', DB_VERSION = 1, STORE = 'entries';
+let db;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE)) {
+        d.createObjectStore(STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbGetAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbPut(entry) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).put(entry);
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbDelete(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── Init ──
+async function init() {
+  const scene = getScene();
+  applyScene(scene); spawnParticles(scene);
+  const q = QUOTES[Math.floor((new Date()-(new Date(new Date().getFullYear(),0,0)))/86400000) % QUOTES.length];
+  document.getElementById('dq-text').textContent = '\u201c'+q.text+'\u201d';
+  document.getElementById('dq-author').textContent = '\u2014 '+q.author;
+  updateClock(); setInterval(updateClock, 1000);
+
+  db = await openDB();
+
+  // Migrate any existing localStorage entries on first run
+  const legacy = localStorage.getItem('journal_entries');
+  if (legacy) {
+    const old = JSON.parse(legacy);
+    for (const e of old) await dbPut(e);
+    localStorage.removeItem('journal_entries');
+  }
+
+  const all = await dbGetAll();
+  entries = all.sort((a, b) => b.id - a.id);
+  renderEntries(); renderTimeline(); renderSideCal(); renderCalendar();
+}
+
+function updateClock() {
+  const now = new Date();
+  const opts = {weekday:'long',year:'numeric',month:'long',day:'numeric'};
+  const ds = now.toLocaleDateString('en-US',opts);
+  const ts = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('top-date').textContent = ds;
+  document.getElementById('editor-datestamp').textContent = ds;
+  document.getElementById('editor-timestamp').textContent = ts;
+}
+
+// ── View switching ──
+function switchView(v) {
+  document.getElementById('view-write').classList.toggle('active', v==='write');
+  document.getElementById('view-calendar').classList.toggle('active', v==='calendar');
+  document.querySelectorAll('.vtab').forEach((t,i)=>t.classList.toggle('active',(i===0&&v==='write')||(i===1&&v==='calendar')));
+  if (v==='calendar') renderCalendar();
+}
+
+// ── Sidebar tabs ──
+function switchSideTab(tab) {
+  document.querySelectorAll('.stab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='timeline')||(i===1&&tab==='cal')));
+  document.getElementById('timeline').style.display = tab==='timeline'?'block':'none';
+  const sc = document.getElementById('sidebar-calendar');
+  sc.style.display = tab==='cal'?'block':'none';
+  if (tab==='cal') renderSideCal();
+}
+
+// ── New Entry ──
+function newEntry() {
+  switchView('write');
+  editingId=null;
+  document.getElementById('entry-title').value='';
+  document.getElementById('entry-body').value='';
+  document.getElementById('quote-input').value='';
+  currentLinks=[]; currentImages=[]; selectedMood='';
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
+  renderLinksList(); renderImagesGrid();
+  ['quote-section','links-section','images-section'].forEach(id=>document.getElementById(id).classList.remove('visible'));
+  ['btn-quote','btn-links','btn-images'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById('editor-card').scrollIntoView({behavior:'smooth'});
+}
+
+function selectMood(btn) {
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected'); selectedMood=btn.dataset.mood;
+}
+function toggleSection(sId,bId) {
+  document.getElementById(sId).classList.toggle('visible');
+  document.getElementById(bId).classList.toggle('active');
+}
+function autoResize(el) { el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
+
+// ── Links ──
+function addLink() {
+  const url=document.getElementById('link-url').value.trim();
+  const label=document.getElementById('link-label').value.trim();
+  if(!url) return;
+  currentLinks.push({url,label:label||url});
+  document.getElementById('link-url').value=''; document.getElementById('link-label').value='';
+  renderLinksList();
+}
+function removeLink(i){currentLinks.splice(i,1);renderLinksList();}
+function renderLinksList(){
+  document.getElementById('links-list').innerHTML=currentLinks.map((l,i)=>`
+    <div class="link-item"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>
+    <span class="remove-link" onclick="removeLink(${i})">×</span></div>`).join('');
+}
+
+// ── Images ──
+function addImageFromUrl(){
+  const url=document.getElementById('img-url').value.trim(); if(!url) return;
+  currentImages.push(url); document.getElementById('img-url').value=''; renderImagesGrid();
+}
+function handleFileUpload(input){
+  Array.from(input.files).forEach(f=>{
+    const r=new FileReader(); r.onload=e=>{currentImages.push(e.target.result);renderImagesGrid();}; r.readAsDataURL(f);
+  }); input.value='';
+}
+function removeImage(i){currentImages.splice(i,1);renderImagesGrid();}
+function renderImagesGrid(){
+  document.getElementById('images-grid').innerHTML=currentImages.map((src,i)=>`
+    <div class="img-item"><img src="${esc(src)}" alt="" /><button class="remove-img" onclick="removeImage(${i})">×</button></div>`).join('');
+}
+
+// ── Save ──
+async function saveEntry(){
+  const title=document.getElementById('entry-title').value.trim();
+  const body=document.getElementById('entry-body').value.trim();
+  const quote=document.getElementById('quote-input').value.trim();
+  if(!title&&!body) return;
+  const now=new Date();
+  const entry={
+    id:editingId||Date.now(), title:title||'Untitled', body, quote,
+    mood:selectedMood, links:[...currentLinks], images:[...currentImages],
+    date:now.toISOString(),
+    dateStr:now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}),
+    timeStr:now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+    year:now.getFullYear(), month:now.getMonth(), day:now.getDate()
+  };
+  if(editingId){const idx=entries.findIndex(e=>e.id===editingId);if(idx!==-1)entries[idx]=entry;}
+  else entries.unshift(entry);
+  await dbPut(entry);
+  editingId=null;
+  const fb=document.getElementById('save-feedback');
+  fb.classList.add('show'); setTimeout(()=>fb.classList.remove('show'),2000);
+  newEntry(); renderEntries(); renderTimeline(); renderSideCal(); renderCalendar();
+}
+
+// ── Entries ──
+function renderEntries(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const list=document.getElementById('entries-list');
+  const empty=document.getElementById('empty-state');
+  const filtered=entries.filter(e=>!q||e.title.toLowerCase().includes(q)||(e.body||'').toLowerCase().includes(q)||(e.quote||'').toLowerCase().includes(q));
+  if(!filtered.length){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=filtered.map(e=>`
+    <div class="entry-card" onclick="openEntry(${e.id})">
+      <button class="entry-card-delete" onclick="deleteEntry(event,${e.id})">×</button>
+      <div class="entry-card-header">
+        <div>${e.mood?`<div class="entry-card-mood">${e.mood}</div>`:''}<div class="entry-card-title">${esc(e.title)}</div></div>
+        <div class="entry-card-meta"><div class="entry-card-date">${e.dateStr}</div><div class="entry-card-time">${e.timeStr}</div></div>
+      </div>
+      ${e.body?`<div class="entry-card-body">${esc(e.body)}</div>`:''}
+      ${e.quote?`<div class="entry-card-quote">${esc(e.quote)}</div>`:''}
+      ${(e.images&&e.images.length)?`<div class="entry-card-thumbs">${e.images.slice(0,4).map(s=>`<img class="thumb" src="${esc(s)}" alt="" />`).join('')}${e.images.length>4?`<div class="attachment-pill">+${e.images.length-4} more</div>`:''}</div>`:''}
+      ${(e.links&&e.links.length)?`<div class="entry-card-attachments"><div class="attachment-pill">🔗 ${e.links.length} link${e.links.length>1?'s':''}</div></div>`:''}
+    </div>`).join('');
+}
+
+async function deleteEntry(evt,id){
+  evt.stopPropagation();
+  if(!confirm('Delete this entry?')) return;
+  entries=entries.filter(e=>e.id!==id);
+  await dbDelete(id);
+  renderEntries(); renderTimeline(); renderSideCal(); renderCalendar();
+}
+
+// ── Open Modal ──
+function openEntry(id){
+  const e=entries.find(x=>x.id===id); if(!e) return;
+  document.getElementById('modal-mood').textContent=e.mood||'';
+  document.getElementById('modal-title').textContent=e.title;
+  document.getElementById('modal-meta').textContent=`${e.dateStr}  ·  ${e.timeStr}`;
+  document.getElementById('modal-body').textContent=e.body||'';
+  const qw=document.getElementById('modal-quote-wrap');
+  if(e.quote){document.getElementById('modal-quote').textContent=e.quote;qw.style.display='block';}else qw.style.display='none';
+  const lw=document.getElementById('modal-links');
+  if(e.links&&e.links.length){document.getElementById('modal-links-list').innerHTML=e.links.map(l=>`<a class="modal-link" href="${esc(l.url)}" target="_blank" rel="noopener">🔗 ${esc(l.label)}</a>`).join('');lw.style.display='block';}else lw.style.display='none';
+  const iw=document.getElementById('modal-images');
+  if(e.images&&e.images.length){document.getElementById('modal-images-grid').innerHTML=e.images.map(s=>`<img src="${esc(s)}" alt="image" onclick="window.open('${esc(s)}','_blank')" />`).join('');iw.style.display='block';}else iw.style.display='none';
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(evt){if(evt.target===document.getElementById('modal-overlay'))closeModalDirect();}
+function closeModalDirect(){document.getElementById('modal-overlay').classList.remove('open');document.body.style.overflow='';}
+
+// ── Timeline ──
+function renderTimeline(){
+  const el=document.getElementById('timeline');
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const tree={};
+  entries.forEach(e=>{if(!tree[e.year])tree[e.year]={};if(!tree[e.year][e.month])tree[e.year][e.month]=[];tree[e.year][e.month].push(e);});
+  const years=Object.keys(tree).sort((a,b)=>b-a);
+  if(!years.length){el.innerHTML='';return;}
+  el.innerHTML=years.map(y=>`
+    <div class="year-group">
+      <div class="year-label open" onclick="toggleTL(this,'months-${y}')"><span class="caret">▶</span> ${y}</div>
+      <div class="month-group open" id="months-${y}">
+        ${Object.keys(tree[y]).sort((a,b)=>b-a).map(m=>`
+          <div>
+            <div class="month-label open" onclick="toggleTL(this,'days-${y}-${m}')"><span class="caret">▶</span> ${MONTHS[m]} <span style="color:#3a4e28;font-size:10px;">${tree[y][m].length}</span></div>
+            <div class="day-entries open" id="days-${y}-${m}">
+              ${tree[y][m].map(e=>`
+                <div class="day-entry-item" onclick="openEntry(${e.id})">
+                  <span class="etitle">${e.mood?e.mood+' ':''}${esc(e.title)}</span>
+                  <span class="emeta">${e.day} · ${e.timeStr}</span>
+                </div>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleTL(el,cId){const c=document.getElementById(cId);if(!c)return;const o=c.classList.contains('open');c.classList.toggle('open',!o);el.classList.toggle('open',!o);}
+
+// ── Sidebar Mini Calendar ──
+let sideCalYear=new Date().getFullYear(), sideCalMonth=new Date().getMonth();
+function renderSideCal(){
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('side-cal-title').textContent=`${MONTHS[sideCalMonth]} ${sideCalYear}`;
+  const grid=document.getElementById('side-cal-grid');
+  const today=new Date(); const entryDays=new Set(entries.filter(e=>e.year===sideCalYear&&e.month===sideCalMonth).map(e=>e.day));
+  const first=new Date(sideCalYear,sideCalMonth,1).getDay();
+  const days=new Date(sideCalYear,sideCalMonth+1,0).getDate();
+  let html='';
+  for(let i=0;i<first;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const isToday=d===today.getDate()&&sideCalMonth===today.getMonth()&&sideCalYear===today.getFullYear();
+    const haE=entryDays.has(d);
+    html+=`<div class="cal-day${isToday?' today':''}${haE?' has-entry':''}" onclick="jumpToDay(${sideCalYear},${sideCalMonth},${d})">${d}</div>`;
+  }
+  grid.innerHTML=html;
+}
+function sideCalPrev(){sideCalMonth--;if(sideCalMonth<0){sideCalMonth=11;sideCalYear--;}renderSideCal();}
+function sideCalNext(){sideCalMonth++;if(sideCalMonth>11){sideCalMonth=0;sideCalYear++;}renderSideCal();}
+function jumpToDay(y,m,d){
+  const dayEntries=entries.filter(e=>e.year===y&&e.month===m&&e.day===d);
+  if(dayEntries.length===1){openEntry(dayEntries[0].id);}
+  else if(dayEntries.length>1){switchView('write'); document.getElementById('search').value=`${d}`; renderEntries();}
+}
+
+// ── Main Calendar ──
+function renderCalendar(){
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-title').textContent=`${MONTHS[calMonth]} ${calYear}`;
+  const cells=document.getElementById('cal-cells');
+  const today=new Date();
+  const first=new Date(calYear,calMonth,1).getDay();
+  const days=new Date(calYear,calMonth+1,0).getDate();
+  // build entry map
+  const map={};
+  entries.forEach(e=>{if(e.year===calYear&&e.month===calMonth){if(!map[e.day])map[e.day]=[];map[e.day].push(e);}});
+  // prev month tail
+  const prevDays=new Date(calYear,calMonth,0).getDate();
+  let html='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">';
+  for(let i=0;i<first;i++){
+    const d=prevDays-first+1+i;
+    html+=`<div class="cal-cell other-month"><div class="cal-cell-day">${d}</div></div>`;
+  }
+  for(let d=1;d<=days;d++){
+    const isToday=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
+    const dayE=map[d]||[];
+    html+=`<div class="cal-cell${isToday?' today':''}${dayE.length?' has-entry':''}" onclick="calDayClick(${d})">
+      <div class="cal-cell-day">${d}</div>
+      ${dayE.slice(0,3).map(e=>`<div class="cal-entry-chip" onclick="event.stopPropagation();openEntry(${e.id})">${e.mood?e.mood+' ':''}${esc(e.title)}</div>`).join('')}
+      ${dayE.length>3?`<div class="cal-more">+${dayE.length-3} more</div>`:''}
+    </div>`;
+  }
+  // next month
+  const total=first+days; const remaining=(7-total%7)%7;
+  for(let i=1;i<=remaining;i++) html+=`<div class="cal-cell other-month"><div class="cal-cell-day">${i}</div></div>`;
+  html+='</div>';
+  cells.innerHTML=html;
+}
+function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();}
+function calToday(){calYear=new Date().getFullYear();calMonth=new Date().getMonth();renderCalendar();}
+function calDayClick(d){
+  const dayE=entries.filter(e=>e.year===calYear&&e.month===calMonth&&e.day===d);
+  if(dayE.length===1) openEntry(dayE[0].id);
+  else if(dayE.length===0){switchView('write');newEntry();}
+}
+
+function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+init();
+</script>
+</body>
+</html>
