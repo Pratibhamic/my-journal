@@ -209,6 +209,15 @@ body {
   box-shadow: 0 2px 8px rgba(78,138,54,0.3);
 }
 #new-entry-topbtn:hover { opacity: 0.85; }
+#export-btn, #import-btn {
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.4);
+  color: #3a4a2a; border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 10px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background 0.2s; white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+#export-btn:hover, #import-btn:hover { background: rgba(255,255,255,0.75); }
 
 #search-wrap { position: relative; }
 #search {
@@ -549,6 +558,8 @@ body {
     </div>
     <div id="top-right">
       <button id="new-entry-topbtn" onclick="newEntry()">+ New Entry</button>
+      <button id="export-btn" onclick="exportEntries()" title="Export entries">⬇ Export</button>
+      <label id="import-btn" title="Import entries">⬆ Import<input type="file" id="import-file" accept=".json" onchange="importEntries(this)" style="display:none"/></label>
       <div id="search-wrap">
         <span id="search-icon">🔍</span>
         <input id="search" type="text" placeholder="Search…" oninput="renderEntries()" />
@@ -1070,6 +1081,35 @@ function calDayClick(d){
 }
 
 function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── Export / Import ──
+function exportEntries() {
+  const data = JSON.stringify(entries, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `journal-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function importEntries(input) {
+  const file = input.files[0]; if (!file) return;
+  const text = await file.text();
+  let imported;
+  try { imported = JSON.parse(text); } catch { alert('Invalid file.'); return; }
+  if (!Array.isArray(imported)) { alert('Invalid journal file.'); return; }
+  const existing = new Set(entries.map(e => e.id));
+  let added = 0;
+  for (const e of imported) {
+    if (!existing.has(e.id)) { await dbPut(e); entries.push(e); added++; }
+  }
+  entries.sort((a,b) => b.id - a.id);
+  input.value = '';
+  renderEntries(); renderTimeline(); renderSideCal(); renderCalendar();
+  alert(`✓ Imported ${added} new entr${added===1?'y':'ies'}.`);
+}
 
 init();
 </script>
