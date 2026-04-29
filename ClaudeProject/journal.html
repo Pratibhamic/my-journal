@@ -499,57 +499,6 @@ body {
 #modal-images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 9px; }
 #modal-images-grid img { width: 100%; border-radius: 9px; object-fit: cover; aspect-ratio: 1; cursor: pointer; }
 
-/* ── Login Screen ── */
-#login-screen {
-  position: fixed; inset: 0; z-index: 500;
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-}
-#login-card {
-  background: rgba(255,255,255,0.88);
-  backdrop-filter: blur(24px);
-  border-radius: 24px;
-  padding: 52px 48px;
-  text-align: center;
-  max-width: 400px; width: 100%;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.15);
-  border: 1px solid rgba(255,255,255,0.8);
-}
-#login-icon { font-size: 52px; margin-bottom: 16px; }
-#login-card h2 {
-  font-family: var(--font-serif); font-size: 28px; font-weight: 400;
-  color: var(--text); margin-bottom: 8px;
-}
-#login-card p { font-size: 14px; color: var(--sub); line-height: 1.6; margin-bottom: 32px; }
-#google-signin-btn {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  width: 100%; padding: 14px 24px;
-  background: white; color: #3c4043;
-  border: 1px solid #dadce0; border-radius: 12px;
-  font-size: 15px; font-weight: 500; cursor: pointer;
-  transition: box-shadow 0.2s, background 0.2s;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-}
-#google-signin-btn:hover { background: #f8f9fa; box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
-#google-signin-btn img { width: 20px; height: 20px; }
-#login-note { font-size: 11px; color: #bbb; margin-top: 20px; }
-
-/* User badge in top bar */
-#user-badge {
-  display: flex; align-items: center; gap: 8px;
-  background: rgba(255,255,255,0.4); border-radius: 20px;
-  padding: 4px 12px 4px 4px; border: 1px solid rgba(255,255,255,0.6);
-  backdrop-filter: blur(8px);
-}
-#user-avatar {
-  width: 26px; height: 26px; border-radius: 50%; object-fit: cover;
-}
-#user-name { font-size: 12px; color: #3a4a2a; font-weight: 500; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#signout-btn {
-  background: none; border: none; font-size: 11px; color: var(--sub);
-  cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: color 0.15s;
-}
-#signout-btn:hover { color: var(--red); }
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -558,19 +507,6 @@ body {
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div id="login-screen">
-  <div id="login-card">
-    <div id="login-icon">🌿</div>
-    <h2>Your Journal</h2>
-    <p>A private space to write, reflect,<br>and grow — every single day.</p>
-    <button id="google-signin-btn" onclick="signInWithGoogle()">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
-      Continue with Google
-    </button>
-    <div id="login-note">Your entries are private and only visible to you.</div>
-  </div>
-</div>
 
 <div id="nature-bg"></div>
 <div id="shimmer"></div>
@@ -617,11 +553,6 @@ body {
       <button class="vtab" onclick="switchView('calendar')">📅 Calendar</button>
     </div>
     <div id="top-right">
-      <div id="user-badge" style="display:none">
-        <img id="user-avatar" src="" alt="" />
-        <span id="user-name"></span>
-        <button id="signout-btn" onclick="signOut()">Sign out</button>
-      </div>
       <button id="new-entry-topbtn" onclick="newEntry()">+ New Entry</button>
       <div id="search-wrap">
         <span id="search-icon">🔍</span>
@@ -845,13 +776,6 @@ async function dbDelete(id) {
 }
 
 // ── Auth ──
-function signInWithGoogle() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithRedirect(provider);
-}
-function signOut() {
-  if (confirm('Sign out?')) auth.signOut();
-}
 
 // ── State ──
 let entries = [];
@@ -867,24 +791,13 @@ function init() {
   document.getElementById('dq-author').textContent = '\u2014 '+q.author;
   updateClock(); setInterval(updateClock, 1000);
 
-  // Handle redirect result after Google sign-in
-  auth.getRedirectResult().catch(err => console.error('Redirect error:', err));
-
+  // Auto sign in anonymously — no login screen needed
   auth.onAuthStateChanged(async user => {
-    const loginScreen = document.getElementById('login-screen');
-    const badge       = document.getElementById('user-badge');
     if (user) {
-      loginScreen.style.display = 'none';
-      badge.style.display = 'flex';
-      document.getElementById('user-avatar').src = user.photoURL || '';
-      document.getElementById('user-name').textContent = user.displayName || user.email;
       entries = await dbGetAll();
       renderEntries(); renderTimeline(); renderSideCal(); renderCalendar();
     } else {
-      loginScreen.style.display = 'flex';
-      badge.style.display = 'none';
-      entries = [];
-      renderEntries(); renderTimeline(); renderSideCal(); renderCalendar();
+      await auth.signInAnonymously();
     }
   });
 }
