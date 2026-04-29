@@ -508,6 +508,20 @@ body {
 <body>
 
 
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(24px);border-radius:24px;padding:52px 48px;text-align:center;max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.15);">
+    <div style="font-size:52px;margin-bottom:16px;">🌿</div>
+    <h2 style="font-family:Georgia,serif;font-size:28px;font-weight:400;margin-bottom:8px;">Your Journal</h2>
+    <p style="font-size:14px;color:#6b6b6e;line-height:1.6;margin-bottom:32px;">A private space to write, reflect,<br>and grow — every single day.</p>
+    <button onclick="signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 24px;background:white;color:#3c4043;border:1px solid #dadce0;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google"/>
+      Continue with Google
+    </button>
+    <p id="login-status" style="font-size:12px;color:#aaa;margin-top:16px;"></p>
+  </div>
+</div>
+
 <div id="nature-bg"></div>
 <div id="shimmer"></div>
 <div id="particles"></div>
@@ -791,13 +805,23 @@ function init() {
   document.getElementById('dq-author').textContent = '\u2014 '+q.author;
   updateClock(); setInterval(updateClock, 1000);
 
-  // Auto sign in anonymously — no login screen needed
+  // Handle redirect result first
+  try {
+    const result = await auth.getRedirectResult();
+    if (result.user) console.log('Signed in via redirect:', result.user.email);
+  } catch(e) {
+    console.error('Redirect error:', e.message);
+    document.getElementById('login-status').textContent = 'Error: ' + e.message;
+  }
+
   auth.onAuthStateChanged(async user => {
+    const loginScreen = document.getElementById('login-screen');
     if (user) {
+      loginScreen.style.display = 'none';
       entries = await dbGetAll();
       renderEntries(); renderTimeline(); renderSideCal(); renderCalendar();
     } else {
-      await auth.signInAnonymously();
+      loginScreen.style.display = 'flex';
     }
   });
 }
@@ -1057,6 +1081,12 @@ function calDayClick(d){
 
 function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+
+function signInWithGoogle() {
+  document.getElementById('login-status').textContent = 'Redirecting to Google…';
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithRedirect(provider);
+}
 
 init();
 </script>
