@@ -847,7 +847,7 @@ async function dbDelete(id) {
 // ── Auth ──
 function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider);
+  auth.signInWithRedirect(provider);
 }
 function signOut() {
   if (confirm('Sign out?')) auth.signOut();
@@ -866,6 +866,9 @@ function init() {
   document.getElementById('dq-text').textContent = '\u201c'+q.text+'\u201d';
   document.getElementById('dq-author').textContent = '\u2014 '+q.author;
   updateClock(); setInterval(updateClock, 1000);
+
+  // Handle redirect result after Google sign-in
+  auth.getRedirectResult().catch(err => console.error('Redirect error:', err));
 
   auth.onAuthStateChanged(async user => {
     const loginScreen = document.getElementById('login-screen');
